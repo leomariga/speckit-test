@@ -1,0 +1,193 @@
+/**
+ * Print-ready CSS stylesheet for PDF generation
+ */
+
+.pdf-content {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+  font-family: 'Georgia', 'Times New Roman', serif;
+  font-size: 12pt;
+  line-height: 1.6;
+  color: #000;
+  background-color: #fff;
+}
+
+/* Headings */
+.pdf-content h1,
+.pdf-content h2,
+.pdf-content h3,
+.pdf-content h4,
+.pdf-content h5,
+.pdf-content h6 {
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
+  font-weight: bold;
+  line-height: 1.2;
+  page-break-after: avoid;
+}
+
+.pdf-content h1 {
+  font-size: 24pt;
+  border-bottom: 2px solid #333;
+  padding-bottom: 0.3em;
+}
+
+.pdf-content h2 {
+  font-size: 20pt;
+  border-bottom: 1px solid #666;
+  padding-bottom: 0.3em;
+}
+
+.pdf-content h3 {
+  font-size: 16pt;
+}
+
+.pdf-content h4 {
+  font-size: 14pt;
+}
+
+.pdf-content h5 {
+  font-size: 12pt;
+}
+
+.pdf-content h6 {
+  font-size: 11pt;
+  color: #666;
+}
+
+/* Paragraphs */
+.pdf-content p {
+  margin: 0.8em 0;
+  text-align: justify;
+}
+
+/* Lists */
+.pdf-content ul,
+.pdf-content ol {
+  margin: 0.8em 0;
+  padding-left: 2em;
+}
+
+.pdf-content li {
+  margin: 0.3em 0;
+}
+
+.pdf-content ul ul,
+.pdf-content ol ol,
+.pdf-content ul ol,
+.pdf-content ol ul {
+  margin: 0.2em 0;
+}
+
+/* Code blocks */
+.pdf-content pre {
+  background-color: #f5f5f5;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  padding: 10px;
+  margin: 1em 0;
+  font-family: 'Courier New', monospace;
+  font-size: 10pt;
+  line-height: 1.4;
+  overflow-x: auto;
+  page-break-inside: avoid;
+}
+
+.pdf-content code {
+  font-family: 'Courier New', monospace;
+  font-size: 10pt;
+  background-color: #f5f5f5;
+  padding: 2px 4px;
+  border-radius: 3px;
+}
+
+.pdf-content pre code {
+  background-color: transparent;
+  padding: 0;
+}
+
+/* Blockquotes */
+.pdf-content blockquote {
+  border-left: 4px solid #ddd;
+  padding-left: 1em;
+  margin: 1em 0;
+  color: #666;
+  font-style: italic;
+}
+
+/* Tables */
+.pdf-content table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1em 0;
+  page-break-inside: avoid;
+}
+
+.pdf-content th,
+.pdf-content td {
+  border: 1px solid #ddd;
+  padding: 8px;
+  text-align: left;
+}
+
+.pdf-content th {
+  background-color: #f5f5f5;
+  font-weight: bold;
+}
+
+.pdf-content tr:nth-child(even) {
+  background-color: #fafafa;
+}
+
+/* Links */
+.pdf-content a {
+  color: #0066cc;
+  text-decoration: none;
+}
+
+.pdf-content a:hover {
+  text-decoration: underline;
+}
+
+/* Horizontal rules */
+.pdf-content hr {
+  border: none;
+  border-top: 1px solid #ddd;
+  margin: 2em 0;
+}
+
+/* Images */
+.pdf-content img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 1em 0;
+}
+
+/* Page breaks */
+@media print {
+  .pdf-content {
+    page-break-inside: avoid;
+  }
+
+  .pdf-content h1,
+  .pdf-content h2,
+  .pdf-content h3,
+  .pdf-content h4,
+  .pdf-content h5,
+  .pdf-content h6 {
+    page-break-after: avoid;
+  }
+
+  .pdf-content pre,
+  .pdf-content table,
+  .pdf-content figure {
+    page-break-inside: avoid;
+  }
+
+  .pdf-content img {
+    page-break-inside: avoid;
+  }
+}
+

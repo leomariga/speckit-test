@@ -1,0 +1,437 @@
+openapi: 3.0.3
+info:
+  title: Markdown to PDF Converter API
+  version: 1.0.0
+  description: |
+    API for converting markdown to PDF with user authentication and plan-based limits.
+    All endpoints require authentication except OAuth initiation.
+
+servers:
+  - url: http://localhost:8000/api/v1
+    description: Local development server
+  - url: https://api.example.com/api/v1
+    description: Production server
+
+tags:
+  - name: auth
+    description: Authentication endpoints
+  - name: conversions
+    description: Markdown to PDF conversion endpoints
+  - name: users
+    description: User account management endpoints
+  - name: health
+    description: Health check endpoints
+
+paths:
+  /health:
+    get:
+      tags:
+        - health
+      summary: Health check
+      description: Returns API health status
+      operationId: healthCheck
+      responses:
+        '200':
+          description: API is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "healthy"
+                  timestamp:
+                    type: string
+                    format: date-time
+
+  /auth/google:
+    get:
+      tags:
+        - auth
+      summary: Initiate Gmail OAuth flow
+      description: Redirects user to Google OAuth consent screen
+      operationId: initiateGoogleAuth
+      responses:
+        '302':
+          description: Redirect to Google OAuth
+          headers:
+            Location:
+              schema:
+                type: string
+                example: "https://accounts.google.com/o/oauth2/v2/auth?..."
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /auth/google/callback:
+    get:
+      tags:
+        - auth
+      summary: OAuth callback handler
+      description: Handles Google OAuth callback, creates/updates user, sets session cookie
+      operationId: handleGoogleCallback
+      parameters:
+        - name: code
+          in: query
+          required: true
+          schema:
+            type: string
+          description: OAuth authorization code
+        - name: state
+          in: query
+          required: false
+          schema:
+            type: string
+          description: OAuth state parameter
+      responses:
+        '302':
+          description: Redirect to frontend with session cookie set
+          headers:
+            Location:
+              schema:
+                type: string
+                example: "http://localhost:3000/dashboard"
+            Set-Cookie:
+              schema:
+                type: string
+                example: "session=abc123; HttpOnly; Secure; SameSite=Lax"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /auth/me:
+    get:
+      tags:
+        - auth
+      summary: Get current user
+      description: Returns authenticated user information
+      operationId: getCurrentUser
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: User information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /auth/logout:
+    post:
+      tags:
+        - auth
+      summary: Logout user
+      description: Invalidates session and logs out user
+      operationId: logoutUser
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Logout successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Logged out successfully"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /conversions:
+    post:
+      tags:
+        - conversions
+      summary: Convert markdown to PDF
+      description: |
+        Converts markdown content to PDF. Requires authentication.
+        Checks plan limits before conversion. Returns PDF file or error.
+      operationId: convertMarkdownToPdf
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                input_type:
+                  type: string
+                  enum: [text, file]
+                  description: Input method
+                markdown_text:
+                  type: string
+                  description: Markdown text content (required if input_type=text)
+                markdown_file:
+                  type: string
+                  format: binary
+                  description: Markdown file upload (required if input_type=file)
+              required:
+                - input_type
+          application/json:
+            schema:
+              type: object
+              properties:
+                input_type:
+                  type: string
+                  enum: [text, file]
+                markdown_text:
+                  type: string
+              required:
+                - input_type
+                - markdown_text
+      responses:
+        '200':
+          description: PDF file generated successfully
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConversionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Plan limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Plan limit exceeded"
+                message: "Free plan limit of 20 pages reached. Upgrade to premium for more pages."
+                current_pages: 18
+                requested_pages: 5
+                limit: 20
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /conversions/history:
+    get:
+      tags:
+        - conversions
+      summary: Get conversion history
+      description: Returns paginated list of user's conversions
+      operationId: getConversionHistory
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          description: Page number
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          description: Items per page
+      responses:
+        '200':
+          description: Conversion history
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  conversions:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Conversion'
+                  total:
+                    type: integer
+                  page:
+                    type: integer
+                  limit:
+                    type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /users/account:
+    get:
+      tags:
+        - users
+      summary: Get user account information
+      description: Returns user account details including plan and usage
+      operationId: getUserAccount
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: User account information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserAccount'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: session
+
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: objectid
+        email:
+          type: string
+          format: email
+        plan_type:
+          type: string
+          enum: [free, premium]
+        total_pages_converted:
+          type: integer
+          minimum: 0
+        account_created_at:
+          type: string
+          format: date-time
+        last_login_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    UserAccount:
+      allOf:
+        - $ref: '#/components/schemas/User'
+        - type: object
+          properties:
+            plan_limits:
+              $ref: '#/components/schemas/PlanLimits'
+            remaining_pages:
+              type: integer
+              minimum: 0
+              description: Remaining pages available in current plan
+
+    PlanLimits:
+      type: object
+      properties:
+        min:
+          type: integer
+          minimum: 0
+        max:
+          type: integer
+          minimum: 1
+
+    Conversion:
+      type: object
+      properties:
+        id:
+          type: string
+          format: objectid
+        user_id:
+          type: string
+          format: objectid
+        input_type:
+          type: string
+          enum: [text, file]
+        input_file_name:
+          type: string
+          nullable: true
+        page_count:
+          type: integer
+          minimum: 1
+        conversion_method:
+          type: string
+          enum: [client, server]
+        status:
+          type: string
+          enum: [success, failed]
+        error_message:
+          type: string
+          nullable: true
+        converted_at:
+          type: string
+          format: date-time
+
+    ConversionResponse:
+      type: object
+      properties:
+        conversion_id:
+          type: string
+          format: objectid
+        page_count:
+          type: integer
+          minimum: 1
+        conversion_method:
+          type: string
+          enum: [client, server]
+        pdf_url:
+          type: string
+          format: uri
+          description: URL to download PDF (if stored server-side)
+        message:
+          type: string
+          example: "Conversion successful"
+
+    Error:
+      type: object
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+          additionalProperties: true
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Validation error"
+            message: "Invalid input: markdown_text is required when input_type is 'text'"
+
+    Unauthorized:
+      description: Unauthorized - authentication required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Unauthorized"
+            message: "Authentication required"
+
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Internal server error"
+            message: "An unexpected error occurred"
+
